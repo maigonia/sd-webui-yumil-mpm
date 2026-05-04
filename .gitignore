@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+
+# Developer-only notes (not for distribution)
+memo for dev/
