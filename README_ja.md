@@ -60,6 +60,7 @@ git clone https://github.com/maigonia/sd-webui-yumil-mpm.git
 
 - [Yumil MPM (GitHub)](https://github.com/maigonia/YumilMPM)
 - [ComfyUI 版](https://github.com/maigonia/comfyui-yumil-mpm)
+- [X (@YumilMpm)](https://x.com/YumilMpm)
 
 ## ライセンス
 

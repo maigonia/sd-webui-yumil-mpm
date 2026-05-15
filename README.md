@@ -60,6 +60,7 @@ These settings can also be configured in **Settings > External Prompt Requester*
 
 - [Yumil MPM (GitHub)](https://github.com/maigonia/YumilMPM)
 - [ComfyUI version](https://github.com/maigonia/comfyui-yumil-mpm)
+- [X (@YumilMpm)](https://x.com/YumilMpm)
 
 ## License
 
