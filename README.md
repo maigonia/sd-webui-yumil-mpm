@@ -53,6 +53,8 @@ Requests prompt generation from Yumil MPM before each image generation. While Yu
 - `Positive Prompt Category` — Category name for the positive prompt (default: `PositivePrompt`)
 - `Negative Prompt Category` — Category name for the negative prompt (default: `NegativePrompt`)
 - `Timeout (sec)` — Request timeout in seconds (5–600, default: 240)
+- `Auto-resize output to first reference image aspect ratio` — Match the output size to the first reference image's aspect ratio (default: off)
+- `Target width + height (sum)` — Overall output size for auto-resize (512–8192, default: 2048)
 
 These settings can also be configured in **Settings > External Prompt Requester**.
 
@@ -71,6 +73,10 @@ Received images are assigned to ControlNet units in the order they appear in the
 - The ControlNet unit's module / model / weight etc. must be configured in the WebUI ControlNet panel beforehand. This extension only swaps the **image**.
 - You do **not** need to check the unit's **Enable** checkbox — the extension enables it automatically.
 - Reference images do not appear visually in the Forge Neo UI. Verify behavior via console output (e.g. `[ExternalPromptRequester] Applied image to CN unit 0`).
+
+**About auto-resize:**
+
+When `Auto-resize output to first reference image aspect ratio` is enabled, the output size automatically matches the aspect ratio of the first reference image (from either i2i or ControlNet). Use `Target width + height (sum)` to control the overall output size (2048 recommended for SDXL).
 
 ## Links
 

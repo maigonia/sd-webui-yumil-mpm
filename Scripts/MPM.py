@@ -52,6 +52,19 @@ def _load_image(path):
         return None
 
 
+def _calc_size_by_total(width, height, target_total):
+    """Aspect-ratio preserving size where width+height == target_total, rounded to multiples of 8.
+
+    Mirrors comfyui-yumil-mpm/nodes/image.py:calc_size_by_total.
+    """
+    aspect = width / height
+    new_h = target_total / (1 + aspect)
+    new_w = target_total - new_h
+    new_w = max(8, round(new_w / 8) * 8)
+    new_h = max(8, round(new_h / 8) * 8)
+    return (new_w, new_h)
+
+
 def _get_cn_units(p):
     """Return list of ControlNet unit objects for *this* processing job.
 
@@ -161,14 +174,19 @@ def _apply_to_cn(p, unit_index, pil_image):
     return True
 
 
-def _apply_blocks(p, blocks):
+def _apply_blocks(p, blocks, resize_enabled=False, resize_target_total=2048):
     """Route each block's first image path to a target.
 
     Blocks with Value(target=i2i) go to img2img init_images.
     All other blocks are assigned to ControlNet units in the order they appear
     (first block -> unit 0, second -> unit 1, ...).
+
+    If resize_enabled, overrides p.width/p.height to match the aspect ratio of
+    the *first successfully loaded* reference image, with width+height summing
+    to resize_target_total (rounded to multiples of 8).
     """
     cn_counter = 0
+    first_img = None
     for block in blocks:
         if not block.path:
             continue
@@ -180,6 +198,8 @@ def _apply_blocks(p, blocks):
         img = _load_image(paths[0])
         if img is None:
             continue
+        if first_img is None:
+            first_img = img
         kvs = _parse_value_kvs(block.value)
         target = kvs.get("target", "").strip().lower()
         if target == "i2i":
@@ -187,6 +207,14 @@ def _apply_blocks(p, blocks):
         else:
             _apply_to_cn(p, cn_counter, img)
             cn_counter += 1
+
+    if resize_enabled and first_img is not None:
+        ref_w, ref_h = first_img.size
+        new_w, new_h = _calc_size_by_total(ref_w, ref_h, resize_target_total)
+        old_w, old_h = p.width, p.height
+        p.width = new_w
+        p.height = new_h
+        print(f"{LOG_PREFIX} Output size: {old_w}x{old_h} -> {new_w}x{new_h} (ref={ref_w}x{ref_h}, total={resize_target_total})")
 
 
 class ExternalPromptRequesterScript(scripts.Script):
@@ -223,9 +251,22 @@ class ExternalPromptRequesterScript(scripts.Script):
                     step=5,
                 )
 
-        return [enabled, pos, neg, timeout_seconds]
+                with gr.Row():
+                    resize_enabled = gr.Checkbox(
+                        label="Auto-resize output to first reference image aspect ratio",
+                        value=lambda: getattr(shared.opts, "external_prompt_resize_enabled", False)
+                    )
+                    resize_target_total = gr.Slider(
+                        label="Target width + height (sum)",
+                        minimum=512,
+                        maximum=8192,
+                        value=lambda: getattr(shared.opts, "external_prompt_resize_target_total", 2048),
+                        step=64,
+                    )
 
-    def before_process(self, p, enabled, pos, neg, timeout_seconds):
+        return [enabled, pos, neg, timeout_seconds, resize_enabled, resize_target_total]
+
+    def before_process(self, p, enabled, pos, neg, timeout_seconds, resize_enabled, resize_target_total):
         if not enabled:
             return
 
@@ -240,7 +281,7 @@ class ExternalPromptRequesterScript(scripts.Script):
                 result = parse_prompt(positive_prompt)
                 p.prompt = result.clean_text
                 if result.blocks:
-                    _apply_blocks(p, result.blocks)
+                    _apply_blocks(p, result.blocks, resize_enabled, resize_target_total)
             except Exception as e:
                 print(f"{LOG_PREFIX} Positive prompt processing failed: {e}")
                 p.prompt = positive_prompt
@@ -335,6 +376,22 @@ def on_ui_settings():
             "Timeout (sec)",
             gr.Slider,
             {"minimum": 5, "maximum": 600, "step": 5},
+            section=section,
+        )
+    )
+
+    shared.opts.add_option(
+        "external_prompt_resize_enabled",
+        shared.OptionInfo(False, "Auto-resize output to first reference image aspect ratio", gr.Checkbox, section=section)
+    )
+
+    shared.opts.add_option(
+        "external_prompt_resize_target_total",
+        shared.OptionInfo(
+            2048,
+            "Target width + height (sum) for auto-resize",
+            gr.Slider,
+            {"minimum": 512, "maximum": 8192, "step": 64},
             section=section,
         )
     )

@@ -53,6 +53,8 @@ git clone https://github.com/maigonia/sd-webui-yumil-mpm.git
 - `Positive Prompt Category` — ポジティブプロンプトのカテゴリ名（デフォルト: `PositivePrompt`）
 - `Negative Prompt Category` — ネガティブプロンプトのカテゴリ名（デフォルト: `NegativePrompt`）
 - `Timeout (sec)` — リクエストタイムアウト秒数（5〜600、デフォルト: 240）
+- `Auto-resize output to first reference image aspect ratio` — 最初の参照画像のアスペクト比に合わせて出力サイズを自動調整（デフォルト: オフ）
+- `Target width + height (sum)` — 自動リサイズ時の幅 + 高さの合計値（512〜8192、デフォルト: 2048）
 
 これらの設定は **Settings > External Prompt Requester** からも変更できます。
 
@@ -71,6 +73,10 @@ External Prompt Requester は、Yumil MPM から **プロンプトに加えて�
 - module / model / weight などの ControlNet 側設定は、事前に WebUI の ControlNet パネルで構成しておいてください。本拡張は **画像のみ** を差し替えます。
 - ControlNet ユニットの **Enable チェックは不要** です（本拡張が自動で有効化します）。
 - 参照画像は Forge Neo の UI 上には反映されません。動作確認はコンソール出力（`[ExternalPromptRequester] Applied image to CN unit 0` 等のメッセージ）で行ってください。
+
+**自動リサイズについて:**
+
+`Auto-resize output to first reference image aspect ratio` を有効にすると、最初に読み込まれた参照画像（i2i / ControlNet どちらでも可）の縦横比に合わせて、出力サイズが自動調整されます。`Target width + height (sum)` で全体の大きさを指定できます（SDXL は 2048 がおすすめ）。
 
 ## リンク
 
