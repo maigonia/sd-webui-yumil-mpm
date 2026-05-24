@@ -56,6 +56,22 @@ git clone https://github.com/maigonia/sd-webui-yumil-mpm.git
 
 これらの設定は **Settings > External Prompt Requester** からも変更できます。
 
+### 参照画像の送信
+
+External Prompt Requester は、Yumil MPM から **プロンプトに加えて参照画像** を受け取り、ControlNet や img2img に自動で流し込めます。詳しくは、Yumil MPM の **Utility > チュートリアル中級編 > 参照画像の送り方** を参照してください。
+
+受け取った画像は、プロンプト中に現れた順に ControlNet ユニットへ自動的に割り当てられます（1 つ目 → ユニット 0、2 つ目 → ユニット 1、...）。`Value(target=i2i)` を指定したブロックだけは img2img の入力画像として扱われ、ControlNet の割り当て順には含まれません（ComfyUI 版にはない、本拡張独自の機能です）。
+
+| 指定 | 送り先 |
+|---|---|
+| 省略時 | 登場順に ControlNet ユニットへ |
+| `Value(target=i2i)` | img2img の入力画像（img2img モードのときのみ） |
+
+**ControlNet について:**
+- module / model / weight などの ControlNet 側設定は、事前に WebUI の ControlNet パネルで構成しておいてください。本拡張は **画像のみ** を差し替えます。
+- ControlNet ユニットの **Enable チェックは不要** です（本拡張が自動で有効化します）。
+- 参照画像は Forge Neo の UI 上には反映されません。動作確認はコンソール出力（`[ExternalPromptRequester] Applied image to CN unit 0` 等のメッセージ）で行ってください。
+
 ## リンク
 
 - [Yumil MPM (GitHub)](https://github.com/maigonia/YumilMPM)

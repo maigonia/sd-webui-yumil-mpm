@@ -56,6 +56,22 @@ Requests prompt generation from Yumil MPM before each image generation. While Yu
 
 These settings can also be configured in **Settings > External Prompt Requester**.
 
+### Sending reference images
+
+External Prompt Requester can receive **reference images alongside prompts** from Yumil MPM and route them to ControlNet or img2img automatically. For details, see Yumil MPM's **Utility > Intermediate Tutorial > Sending Reference Images** section.
+
+Received images are assigned to ControlNet units in the order they appear in the prompt (first block → unit 0, second → unit 1, ...). Only blocks with `Value(target=i2i)` are treated as img2img init images and are skipped when counting ControlNet slots. (This routing feature is unique to the WebUI extension — the ComfyUI version does not have it.)
+
+| Specification | Destination |
+|---|---|
+| Omitted | Assigned to ControlNet units in appearance order |
+| `Value(target=i2i)` | img2img init image (img2img mode only) |
+
+**About ControlNet:**
+- The ControlNet unit's module / model / weight etc. must be configured in the WebUI ControlNet panel beforehand. This extension only swaps the **image**.
+- You do **not** need to check the unit's **Enable** checkbox — the extension enables it automatically.
+- Reference images do not appear visually in the Forge Neo UI. Verify behavior via console output (e.g. `[ExternalPromptRequester] Applied image to CN unit 0`).
+
 ## Links
 
 - [Yumil MPM (GitHub)](https://github.com/maigonia/YumilMPM)
