@@ -58,6 +58,24 @@ Requests prompt generation from Yumil MPM before each image generation. While Yu
 
 These settings can also be configured in **Settings > External Prompt Requester**.
 
+### Finite queues and Generate forever
+
+When **Disable automatic queue addition** is enabled in Yumil MPM, the final
+finite-queue response tells this extension not to request another prompt. The
+final prompt is still used for the current image. After Forge Neo finishes that
+generation, its built-in **Generate forever** loop is stopped without
+interrupting the image, clearing pending work, or disabling this extension.
+Manual Generate remains available.
+
+If **Sleep PC after completion** is armed in Yumil MPM, the extension sends the
+completion acknowledgement only after Forge Neo's processing and configured
+image-save operations have completed. API failures or failed generations never
+report successful completion, so MPM remains safely awake.
+
+Older MPM versions continue to work as before. This integration controls Forge
+Neo's built-in browser **Generate forever** loop; a separate program repeatedly
+calling Forge's API must stop its own request loop.
+
 ### Sending reference images
 
 External Prompt Requester can receive **reference images alongside prompts** from Yumil MPM and route them to ControlNet or img2img automatically. For details, see Yumil MPM's **Utility > Intermediate Tutorial > Sending Reference Images** section.

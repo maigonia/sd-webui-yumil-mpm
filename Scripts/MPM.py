@@ -5,7 +5,6 @@ import importlib
 import os
 import secrets
 import sys
-from pathlib import Path
 
 import numpy as np
 from PIL import Image
@@ -17,9 +16,17 @@ if _here not in sys.path:
     sys.path.insert(0, _here)
 
 from yumil_parser import parse_prompt
+from mpm_completion import (
+    API_SERVER_PORT,
+    ParsedGenerationResponse,
+    attach_completion_id,
+    finalize_processing,
+    load_api_key,
+    parse_generation_response,
+    register_completion_route,
+    terminal_signal_registry,
+)
 
-
-API_SERVER_PORT = 19720
 LOG_PREFIX = "[ExternalPromptRequester]"
 
 
@@ -270,11 +277,26 @@ class ExternalPromptRequesterScript(scripts.Script):
         if not enabled:
             return
 
-        positive_prompt, negative_prompt = self.request_external_prompts(
+        generation = self.request_external_prompts(
             pos,
             neg,
             timeout_seconds
         )
+        positive_prompt = generation.prompt_lookup.get(pos, "")
+        negative_prompt = generation.prompt_lookup.get(neg, "")
+
+        terminal_task_recorded = False
+        if generation.terminal_signal is not None:
+            task_id = getattr(shared.state, "job", None)
+            tab = "img2img" if self.is_img2img else "txt2img"
+            terminal_task_recorded = terminal_signal_registry.record(task_id, tab, generation.terminal_signal)
+            if terminal_task_recorded:
+                print(f"{LOG_PREFIX} MPM queue completed; stopping the next {tab} Generate forever run")
+
+        if generation.completion_id is not None and terminal_task_recorded:
+            attach_completion_id(p, generation.completion_id)
+        elif generation.completion_id is not None:
+            print(f"{LOG_PREFIX} Completion acknowledgement skipped because no Forge browser task was found")
 
         if positive_prompt:
             try:
@@ -297,19 +319,13 @@ class ExternalPromptRequesterScript(scripts.Script):
     @staticmethod
     def _load_api_key():
         """Load API key from ~/.mpm/api_key file, fallback to MPM_API_KEY env var."""
-        key_file = Path.home() / ".mpm" / "api_key"
-        if key_file.exists():
-            try:
-                return key_file.read_text(encoding="utf-8").strip()
-            except Exception:
-                pass
-        return os.environ.get("MPM_API_KEY", "")
+        return load_api_key()
 
     def request_external_prompts(self, pos, neg, timeout_seconds):
         api_key = self._load_api_key()
         if not api_key:
             print(f"{LOG_PREFIX} No API key found. Please open MPM and generate an API key in API Server Settings.")
-            return "", ""
+            return ParsedGenerationResponse({}, None, None)
 
         session_id = f"sd-{secrets.token_hex(8)}"
         url = f"http://127.0.0.1:{API_SERVER_PORT}/api/v1/generate"
@@ -327,28 +343,32 @@ class ExternalPromptRequesterScript(scripts.Script):
             response.raise_for_status()
         except requests.exceptions.ConnectionError:
             print(f"{LOG_PREFIX} Cannot connect to API server at port {API_SERVER_PORT}. Is it running?")
-            return "", ""
+            return ParsedGenerationResponse({}, None, None)
         except requests.exceptions.Timeout:
             print(f"{LOG_PREFIX} Request timed out after {timeout_seconds}s")
-            return "", ""
+            return ParsedGenerationResponse({}, None, None)
         except requests.exceptions.HTTPError as e:
             print(f"{LOG_PREFIX} API error: {e.response.status_code} - {e.response.text}")
-            return "", ""
+            return ParsedGenerationResponse({}, None, None)
+        except requests.exceptions.RequestException as e:
+            print(f"{LOG_PREFIX} API request failed: {e}")
+            return ParsedGenerationResponse({}, None, None)
 
-        data = response.json()
-        results = data.get("results", [])
-
-        positive_prompt = next(
-            (r["prompt"] for r in results if r.get("category_name") == pos and r.get("success")),
-            ""
-        )
-        negative_prompt = next(
-            (r["prompt"] for r in results if r.get("category_name") == neg and r.get("success")),
-            ""
-        )
+        try:
+            data = response.json()
+        except ValueError:
+            print(f"{LOG_PREFIX} API returned invalid JSON")
+            return ParsedGenerationResponse({}, None, None)
 
         print(f"{LOG_PREFIX} Generated prompts received (session: {session_id})")
-        return positive_prompt, negative_prompt
+        return parse_generation_response(data)
+
+    def postprocess(self, p, processed, *args):
+        try:
+            if finalize_processing(p):
+                print(f"{LOG_PREFIX} Final image processing acknowledged to MPM")
+        except Exception as e:
+            print(f"{LOG_PREFIX} Could not acknowledge final image processing: {e}")
 
 
 def on_ui_settings():
@@ -398,3 +418,4 @@ def on_ui_settings():
 
 
 script_callbacks.on_ui_settings(on_ui_settings)
+script_callbacks.on_app_started(register_completion_route)

@@ -58,6 +58,14 @@ git clone https://github.com/maigonia/sd-webui-yumil-mpm.git
 
 これらの設定は **Settings > External Prompt Requester** からも変更できます。
 
+### 有限キューと Generate forever
+
+Yumil MPM で **キューの自動追加を停止** が有効な場合、有限キューの最後のレスポンスから、この拡張機能は次のプロンプトを要求しないことを判定します。最後のプロンプトは現在の画像生成に通常どおり使用されます。その画像生成が完了したあと、Forge Neo 標準の **Generate forever** だけを停止します。現在の画像を中断したり、保留中の処理を削除したり、拡張機能自体を無効化したりすることはありません。手動の Generate は引き続き使用できます。
+
+Yumil MPM で **完了後にPCをスリープ** が予約されている場合、Forge Neo の画像処理と設定された保存処理が完了してから、MPMへ完了通知を送ります。APIエラーや生成失敗を成功として通知しないため、MPMが安全確認なしにスリープすることはありません。
+
+古いバージョンのMPMでは従来どおり動作します。この連携が停止できるのはForge Neoのブラウザ標準の **Generate forever** です。別のプログラムがForge APIを繰り返し呼び出している場合、そのプログラム側でリクエストループを停止する必要があります。
+
 ### 参照画像の送信
 
 External Prompt Requester は、Yumil MPM から **プロンプトに加えて参照画像** を受け取り、ControlNet や img2img に自動で流し込めます。詳しくは、Yumil MPM の **Utility > チュートリアル中級編 > 参照画像の送り方** を参照してください。
